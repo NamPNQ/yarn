@@ -361,7 +361,6 @@ export default class PackageLinker {
       }
     };
 
-
     await findExtraneousFiles(this.config.lockfileFolder);
     if (workspaceLayout) {
       for (const workspaceName of Object.keys(workspaceLayout.workspaces)) {
