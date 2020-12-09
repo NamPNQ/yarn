@@ -345,18 +345,22 @@ export default class PackageLinker {
 
               for (const subfile of await fs.readdir(filepath)) {
                 possibleExtraneous.add(path.join(filepath, subfile));
+                await findExtraneousFiles(path.join(filepath, subfile));
               }
             } else if (file[0] === '.' && file !== '.bin') {
               if (!(await fs.lstat(filepath)).isDirectory()) {
                 possibleExtraneous.add(filepath);
+                await findExtraneousFiles(filepath);
               }
             } else {
               possibleExtraneous.add(filepath);
+              await findExtraneousFiles(filepath);
             }
           }
         }
       }
     };
+
 
     await findExtraneousFiles(this.config.lockfileFolder);
     if (workspaceLayout) {
