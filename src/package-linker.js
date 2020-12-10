@@ -476,16 +476,25 @@ export default class PackageLinker {
     });
 
     // remove all extraneous files that weren't in the tree
-    for (const loc of possibleExtraneous) {
+    for (const loc of possibleExtraneous) {      
       this.reporter.verbose(this.reporter.lang('verboseFileRemoveExtraneous', loc));
-      await fs.unlink(loc);
+      try {
+        await fs.unlink(loc);
+      } catch (err) {
+        this.reporter.verbose(`Could not unlink ${loc}: ${err.message}`);
+      }
+
     }
 
     // remove any empty scoped directories
     for (const scopedPath of scopedPaths) {
-      const files = await fs.readdir(scopedPath);
-      if (files.length === 0) {
-        await fs.unlink(scopedPath);
+      try {
+        const files = await fs.readdir(scopedPath);
+        if (files.length === 0) {
+          await fs.unlink(scopedPath);
+        }
+      } catch (err) {
+        this.reporter.verbose(`Could not remove scoped dir ${scopedPath}: ${err.message}`);
       }
     }
 
