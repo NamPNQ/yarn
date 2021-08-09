@@ -476,11 +476,11 @@ export default class PackageResolver {
    */
   isLockfileEntryOutdated(version: string, range: string, hasVersion: boolean): boolean {
     return !!(
-      semver.validRange(range) &&
-      semver.valid(version) &&
-      !getExoticResolver(range) &&
+      semver.validRange(range, {includePrerelease: true}) &&
+      semver.valid(version, {includePrerelease: true}) &&
+      !getExoticResolver(range, {includePrerelease: true}) &&
       hasVersion &&
-      !semver.satisfies(version, range)
+      !semver.satisfies(version, range, {includePrerelease: true})
     );
   }
 

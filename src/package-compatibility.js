@@ -59,21 +59,22 @@ type Versions = {
   [engineName: string]: ?string,
 };
 
+/*
+ Atlassian patched this function:
+ - IncludePrerelease in compatility check, this should make deduplication work properly when using branch deploys
+*/
+
 export function testEngine(name: string, range: string, versions: Versions, looseSemver: boolean): boolean {
   const actual = versions[name];
   if (!actual) {
     return false;
   }
 
-  if (!semver.valid(actual, looseSemver)) {
+  if (!semver.valid(actual, {loose: looseSemver, includePrerelease: true })) {
     return false;
   }
 
-  if (semver.satisfies(actual, range, looseSemver)) {
-    return true;
-  }
-
-  if (name === 'yarn' && satisfiesWithPrereleases(actual, range, looseSemver)) {
+  if (semver.satisfies(actual, range, {loose: looseSemver, includePrerelease: true })) {
     return true;
   }
 
