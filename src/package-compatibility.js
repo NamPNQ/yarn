@@ -78,6 +78,10 @@ export function testEngine(name: string, range: string, versions: Versions, loos
     return true;
   }
 
+  if (name === 'yarn' && satisfiesWithPrereleases(actual, range, looseSemver)) {
+    return true;
+  }
+
   if (name === 'node' && semver.gt(actual, '1.0.0', looseSemver)) {
     // WARNING: this is a massive hack and is super gross but necessary for compatibility
     // some modules have the `engines.node` field set to a caret version below semver major v1
