@@ -473,14 +473,18 @@ export default class PackageResolver {
 
   /**
    * Determine if LockfileEntry is incorrect, remove it from lockfile cache and consider the pattern as new
+   *
+   * Atlassian-fork: Include prereleases to allow the following lock entries:
+   * "@atlaskit/avatar-group@8.4.0-alpha-0371f4c06e53", "@atlaskit/avatar-group@^8.0.0", "@atlaskit/avatar-group@^8.0.14", "@atlaskit/avatar-group@^8.2.0", "@atlaskit/avatar-group@^8.3.0
+   * This is the result of deduping on a branch that uses atlassian-frontend branch deploys
    */
   isLockfileEntryOutdated(version: string, range: string, hasVersion: boolean): boolean {
     return !!(
-      semver.validRange(range) &&
-      semver.valid(version) &&
-      !getExoticResolver(range) &&
+      semver.validRange(range, {includePrerelease: true}) &&
+      semver.valid(version, {includePrerelease: true}) &&
+      !getExoticResolver(range, {includePrerelease: true}) &&
       hasVersion &&
-      !semver.satisfies(version, range)
+      !semver.satisfies(version, range, {includePrerelease: true})
     );
   }
 

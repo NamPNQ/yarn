@@ -11,7 +11,7 @@ export function satisfiesWithPrereleases(version: string, range: string, loose?:
   let semverRange;
   try {
     // $FlowFixMe: Add a definition for the Range class
-    semverRange = new semver.Range(range, loose);
+    semverRange = new semver.Range(range, {includePrerelease: true, loose});
   } catch (err) {
     return false;
   }
@@ -21,7 +21,7 @@ export function satisfiesWithPrereleases(version: string, range: string, loose?:
   }
   let semverVersion;
   try {
-    semverVersion = new semver.SemVer(version, semverRange.loose);
+    semverVersion = new semver.SemVer(version, {includePrerelease: true, loose: semverRange.loose});
   } catch (err) {
     return false;
   }

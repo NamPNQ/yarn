@@ -1,7 +1,7 @@
 {
   "name": "yarn",
   "installationMethod": "unknown",
-  "version": "1.23.0-atlassian.2",
+  "version": "1.23.0-atlassian.3",
   "license": "BSD-2-Clause",
   "preferGlobal": true,
   "description": "📦🐈 Fast, reliable, and secure dependency management.",
@@ -43,7 +43,7 @@
     "request": "^2.87.0",
     "request-capture-har": "^1.2.2",
     "rimraf": "^2.5.0",
-    "semver": "atlassian-forks/node-semver.git#refs/heads/alwasIncludePrerelease",
+    "semver": "^7.3.2",
     "ssri": "^5.3.0",
     "strip-ansi": "^4.0.0",
     "strip-bom": "^3.0.0",
