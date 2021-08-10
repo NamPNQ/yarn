@@ -482,7 +482,7 @@ export default class PackageResolver {
     return !!(
       semver.validRange(range, {includePrerelease: true}) &&
       semver.valid(version, {includePrerelease: true}) &&
-      !getExoticResolver(range, {includePrerelease: true}) &&
+      !getExoticResolver(range) &&
       hasVersion &&
       !semver.satisfies(version, range, {includePrerelease: true})
     );
