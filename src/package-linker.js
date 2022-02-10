@@ -326,48 +326,6 @@ export default class PackageLinker {
       }
     }
 
-    const possibleExtraneous: Set<string> = new Set();
-    const scopedPaths: Set<string> = new Set();
-
-    const findExtraneousFiles = async basePath => {
-      for (const folder of this.config.registryFolders) {
-        const loc = path.resolve(basePath, folder);
-
-        if (await fs.exists(loc)) {
-          const files = await fs.readdir(loc);
-
-          for (const file of files) {
-            const filepath = path.join(loc, file);
-
-            // it's a scope, not a package
-            if (file[0] === '@') {
-              scopedPaths.add(filepath);
-
-              for (const subfile of await fs.readdir(filepath)) {
-                possibleExtraneous.add(path.join(filepath, subfile));
-                await findExtraneousFiles(path.join(filepath, subfile));
-              }
-            } else if (file[0] === '.' && file !== '.bin') {
-              if (!(await fs.lstat(filepath)).isDirectory()) {
-                possibleExtraneous.add(filepath);
-                await findExtraneousFiles(filepath);
-              }
-            } else {
-              possibleExtraneous.add(filepath);
-              await findExtraneousFiles(filepath);
-            }
-          }
-        }
-      }
-    };
-
-    await findExtraneousFiles(this.config.lockfileFolder);
-    if (workspaceLayout) {
-      for (const workspaceName of Object.keys(workspaceLayout.workspaces)) {
-        await findExtraneousFiles(workspaceLayout.workspaces[workspaceName].loc);
-      }
-    }
-
     // If an Extraneous is an entry created via "yarn link", we prevent it from being overwritten.
     // Unfortunately, the only way we can know if they have been created this way is to check if they
     // are symlinks - problem is that it then conflicts with the newly introduced "link:" protocol,
@@ -423,25 +381,78 @@ export default class PackageLinker {
       }
     }
 
-    for (const loc of possibleExtraneous) {
-      let packageName = path.basename(loc);
-      const scopeName = path.basename(path.dirname(loc));
+    const possibleExtraneous: Set<string> = new Set();
+    const scopedPaths: Set<string> = new Set();
 
-      if (scopeName[0] === `@`) {
-        packageName = `${scopeName}/${packageName}`;
+    const findExtraneousFiles = async basePath => {
+      for (const folder of this.config.registryFolders) {
+        const loc = path.resolve(basePath, folder);
+
+        if (await fs.exists(loc)) {
+          const files = await fs.readdir(loc);
+
+          for (const file of files) {
+            const filepath = path.join(loc, file);
+
+            // it's a scope, not a package
+            if (file[0] === '@') {
+              scopedPaths.add(filepath);
+
+              for (const subfile of await fs.readdir(filepath)) {
+                await addPossibleExtraneous(path.join(filepath, subfile));
+              }
+            } else if (file[0] === '.' && file !== '.bin') {
+              if (!(await fs.lstat(filepath)).isDirectory()) {
+                await addPossibleExtraneous(filepath);
+              }
+            } else {
+              await addPossibleExtraneous(filepath);
+            }
+          }
+        }
       }
 
-      if (
-        (await fs.lstat(loc)).isSymbolicLink() &&
-        linkTargets.has(packageName) &&
-        linkTargets.get(packageName) === (await fs.realpath(loc))
-      ) {
-        possibleExtraneous.delete(loc);
-        copyQueue.delete(loc);
+      async function addPossibleExtraneous(fpath: string): Promise<void> {
+        let packageName = path.basename(fpath);
+        const scopeName = path.basename(path.dirname(fpath));
+        if (scopeName[0] === `@`) {
+          packageName = `${scopeName}/${packageName}`;
+        }
+        if (
+          (await fs.lstat(fpath)).isSymbolicLink() &&
+          linkTargets.has(packageName) &&
+          linkTargets.get(packageName) === (await fs.realpath(fpath))
+        ) {
+          /* Ignore linked modules. This is now done inside `findExtraneousFiles` itself
+           * rather than afterwards in order to skip recursing into these modules.
+           */
+          copyQueue.delete(fpath);
+          return;
+        }
+
+        possibleExtraneous.add(fpath);
+        /* Don't recurse into workspace symlinks for two reasons:
+         *  1. Symlinked paths are renamed to their real paths before being added to the copy queue which
+         *     prevents recursive modules in the copy queue matching with `possibleExtraneous`. This prevents
+         *     them from being removed from the possible extraneous set and results in valid nested modules
+         *     of workspaces being deleted. See references to `symlinkPaths` above.
+         *  2. Workspace node_modules are already processed when `findExtraneousFiles` is called on individual
+         *     workspaces. The real workspace paths are used in this case and there are no mismatches so everything
+         *     works fine.
+         */
+        if (!symlinkPaths.has(fpath)) {
+          await findExtraneousFiles(fpath);
+        }
+      }
+    };
+
+    await findExtraneousFiles(this.config.lockfileFolder);
+    if (workspaceLayout) {
+      for (const workspaceName of Object.keys(workspaceLayout.workspaces)) {
+        await findExtraneousFiles(workspaceLayout.workspaces[workspaceName].loc);
       }
     }
 
-    //
     let tick;
     await fs.copyBulk(Array.from(copyQueue.values()), this.reporter, {
       possibleExtraneous,
@@ -476,7 +487,7 @@ export default class PackageLinker {
     });
 
     // remove all extraneous files that weren't in the tree
-    for (const loc of possibleExtraneous) {      
+    for (const loc of possibleExtraneous) {
       this.reporter.verbose(this.reporter.lang('verboseFileRemoveExtraneous', loc));
       try {
         await fs.unlink(loc);
