@@ -431,6 +431,7 @@ export default class PackageLinker {
         }
 
         possibleExtraneous.add(fpath);
+
         /* Don't recurse into workspace symlinks for two reasons:
          *  1. Symlinked paths are renamed to their real paths before being added to the copy queue which
          *     prevents recursive modules in the copy queue matching with `possibleExtraneous`. This prevents
