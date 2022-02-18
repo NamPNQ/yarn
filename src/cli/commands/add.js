@@ -188,7 +188,7 @@ export class Add extends Install {
     await Install.prototype.applyChanges.call(this, manifests);
 
     // fill rootPatternsToOrigin without `excludePatterns`
-    await Install.prototype.fetchRequestFromCwd.call(this);
+    const { manifest: cwdManifest } = await Install.prototype.fetchRequestFromCwd.call(this);
 
     this._iterateAddedPackages((pattern, registry, dependencyType, pkgName, version) => {
       // add it to manifest
@@ -202,7 +202,7 @@ export class Add extends Install {
       ) {
         this.reporter.warn(this.reporter.lang('moduleAlreadyInManifest', pkgName, dependencyType, this.flagToOrigin));
       }
-    });
+    }, cwdManifest);
 
     return true;
   }
@@ -261,6 +261,7 @@ export class Add extends Install {
 
   _iterateAddedPackages(
     f: (pattern: string, registry: RegistryNames, dependencyType: string, pkgName: string, version: string) => void,
+    cwdManifest?: Manifest
   ) {
     const patternOrigins = Object.keys(this.rootPatternsToOrigin);
 
@@ -271,16 +272,32 @@ export class Add extends Install {
       const version = this.getPatternVersion(pattern, pkg);
       const ref = pkg._reference;
       invariant(ref, 'expected package reference');
-      // lookup the package to determine dependency type; used during `yarn upgrade`
-      const depType = patternOrigins.reduce((acc, prev) => {
-        if (prev.indexOf(`${pkg.name}@`) === 0) {
-          return this.rootPatternsToOrigin[prev];
-        }
-        return acc;
-      }, null);
 
-      // depType is calculated when `yarn upgrade` command is used
-      const target = depType || this.flagToOrigin;
+      let target: string;
+      if (cwdManifest) {
+        // when running `yarn upgrade` or `yarn add` inside workspaces
+        // we determine dependency type using the workspace package.json instead of root patterns
+        if (cwdManifest.dependencies[pkg.name]) {
+          target = 'dependencies'
+        }
+        else if (cwdManifest.devDependencies[pkg.name]) {
+          target = 'devDependencies'
+        }
+        else {
+          target = this.flagToOrigin;
+        }
+      } else {
+        // lookup the package to determine dependency type; used during `yarn upgrade`
+        const depType = patternOrigins.reduce((acc, prev) => {
+          if (prev.indexOf(`${pkg.name}@`) === 0) {
+            return this.rootPatternsToOrigin[prev];
+          }
+          return acc;
+        }, null);
+
+        // depType is calculated when `yarn upgrade` command is used
+        target = depType || this.flagToOrigin;
+      }
 
       f(pattern, ref.registry, target, pkg.name, version);
     }
