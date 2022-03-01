@@ -277,11 +277,11 @@ export class Add extends Install {
       if (cwdManifest) {
         // when running `yarn upgrade` or `yarn add` inside workspaces
         // we determine dependency type using the workspace package.json instead of root patterns
-        if (cwdManifest.dependencies[pkg.name]) {
-          target = 'dependencies'
+        if (cwdManifest.dependencies && cwdManifest.dependencies[pkg.name]) {
+          target = 'dependencies';
         }
-        else if (cwdManifest.devDependencies[pkg.name]) {
-          target = 'devDependencies'
+        else if (cwdManifest.devDependencies && cwdManifest.devDependencies[pkg.name]) {
+          target = 'devDependencies';
         }
         else {
           target = this.flagToOrigin;
